@@ -1,0 +1,22 @@
+A Python-based Socket Chatroom Server with Clients.
+https://github.com/SWQInc/socket_chat
+clone socket_chat to local
+# git clone git://github.com/SWQInc/socket_chat.git
+Download Python and Install Python.
+Add C:\Python27\python.exe to system path.
+Open Windows Command Prompt (cmd).
+Start sever by :
+# python server.py
+# 192.168.1.151  8888
+If Windows Firewall asks for permission to allow Python through your firewall, DO SO!
+
+Start client by:
+# python client.py
+# 192.168.1.151  8989  ke
+# /nick NEWNAM 
+# /exit /quit /q
+# /room /r
+All messages sent by all members are seen by all members. The server also has a list of all messages sent by anyone.
+NOTE 1: Some cool tips, if you type /nick NEWNAME you can change your nickname, if you type /exit, /quit, or /q your exited from the server/room, and if you type /r or /room the server will send you back a list of all connected clients with their nicknames.
+NOTE 2: If you want to run this where ever you go, you can put this script and a portable version of Python on a flash drive. A well known portable version is at portablepython.com.
+

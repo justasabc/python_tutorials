@@ -1,0 +1,81 @@
+# Socket Programming in Python
+# socket module and ServerSocket module
+# Implementing a simple server with the ServerSocket module
+import ServerSocket
+class requestHandler(ServerSocket.StreamRequestHandler):
+def handler(self):
+self.wfile.write("hello world\n")
+
+server = ServerSocket.TCPServer(('192.168.1.180',8888),requestHandler)
+server.serve_forever()
+# Using socket API from the interpreter command line
+import socket
+socket.gethostbyname('www.baidu.com')
+# '119.75.217.190'
+socket.gethostbyname('localhost')
+# '127.0.0.1'
+# Listing 1. Creating and destroying sockets
+# Transport protocal type : stream(TCP) and datagram(UDP)
+streamSock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+dgramSock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+# socket.AF_INET : requesting an Internet Protocal(IP) socket,specifically IPv4
+# socket.AF_INET6 to create an IPv6 socket
+# transport protocal type : SOCK_STREAM for TCP sockets and SOCK_DGRAM for UDP sockets
+# Close a connected socket
+streamSock.close()
+# finally delete the streamSock
+del streamSock
+# This statement permanently removes the socket object. CANNOT reference the streamSock any more. 
+# an enepoint
+('192.168.1.188',80)
+('www.baidu.com',80)
+# Server sockets
+# Listing 2. Creating a stream server socket 
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.bind(('192.168.1.188',80))
+sock.listen(5)
+clientSock,(clientHost,clientPort) = sock.accept()
+# Listing 3. Creating a datagram server socket
+sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+sock.bind(('192.168.1.188',25))
+# Client sockets
+# Creating a stream socket and connecting to the server
+sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+sock.connect(('192.168.1.188',80)) # There is a real connection between the client and server
+# Creating a datagram socket and connecting to the server
+sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+sock.connect(('192.168.1.188',80)) # There is NO real connection between the client and server
+# Stream socket I/O
+# Stream echo Server
+import socket
+serverSock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+serverSock.bind(('localhost',8888))
+serverSock.listen(5)
+while 1:
+	clientSock,(clientHost,clientPort) = serverSock.accept()
+	msg = clientSock.recv(100)
+	clientSock.send("[From Server:]"+msg)
+	clientSock.close()
+# Stream echo Client
+import socket
+clientSock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+clientSock.bind(('localhost',8888))
+clientSock.send("Hello world!\n")
+print clientSock.recv(100)
+clientSock.close()
+# Datagram socket I/O
+# Datagram echo Server
+import socket
+datagramSock = socket.socket(socket.AF_INET,socket_SOCK_DGRAM)
+datagramSock.bind(('',8888))
+while 1:
+	msg,(clientHost,clientPort) = datagramSock.recvfrom(100)
+	datagramSock.sendto(msg,(clientHost,clientPort))
+# Datagram echo Client
+import socket
+datagramSock = socket.socket(socket.AF_INET,socket_SOCK_DGRAM)
+datagramSock.sendto("hello world!\n",('',8888))
+print datagramSock.recv(100) # revcfrom()
+datagramSock.close()
+# Asynchronous I/O
+rlist,wlist,elist = select.select([sys.stdin],[],[])

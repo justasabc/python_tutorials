@@ -1,0 +1,23 @@
+DEBUG 2013-09-08 01:38:16,931 This message should go to the log file
+INFO 2013-09-08 01:38:16,931 So should this
+WARNING 2013-09-08 01:38:16,931 And this, too
+DEBUG 2013-09-08 01:38:42,765 This message should go to the log file
+INFO 2013-09-08 01:38:42,766 So should this
+WARNING 2013-09-08 01:38:42,766 And this, too
+WARNING 2013-09-08 01:38:42,766 look before you leap
+DEBUG 2013-09-09 03:01:35,479 This message should go to the log file
+INFO 2013-09-09 03:01:35,484 So should this
+WARNING 2013-09-09 03:01:35,484 And this, too
+WARNING 2013-09-09 03:01:35,484 look before you leap
+DEBUG 2013-09-09 04:56:35,261 This message should go to the log file
+INFO 2013-09-09 04:56:35,261 So should this
+WARNING 2013-09-09 04:56:35,261 And this, too
+WARNING 2013-09-09 04:56:35,261 look before you leap
+2013-09-21 02:40:40,912 root     DEBUG This message should go to the log file
+2013-09-21 02:40:40,920 root     INFO So should this
+2013-09-21 02:40:40,920 root     WARNING And this, too
+2013-09-21 02:40:40,920 root     WARNING look before you leap
+2013-09-21 02:40:40,920 mylogger DEBUG This message should go to the log file
+2013-09-21 02:40:40,921 mylogger INFO So should this
+2013-09-21 02:40:40,921 mylogger WARNING And this, too
+2013-09-21 02:40:40,921 mylogger WARNING look before you leap
