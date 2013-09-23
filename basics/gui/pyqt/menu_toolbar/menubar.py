@@ -23,6 +23,8 @@ class Example(QtGui.QMainWindow):
         self.initUI()
         
     def initUI(self):               
+	openAction = QtGui.QAction(QtGui.QIcon(''),'&Open',self)
+
         exitAction = QtGui.QAction(QtGui.QIcon('exit.png'), '&Exit', self)        
         exitAction.setShortcut('Ctrl+Q')
         exitAction.setStatusTip('Exit application')
@@ -33,6 +35,7 @@ class Example(QtGui.QMainWindow):
 
         menubar = self.menuBar()
         fileMenu = menubar.addMenu('&File')
+	fileMenu.addAction(openAction)
         fileMenu.addAction(exitAction)
         
         self.setGeometry(300, 300, 300, 200)

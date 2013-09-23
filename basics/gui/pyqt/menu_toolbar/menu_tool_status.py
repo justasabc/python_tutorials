@@ -28,18 +28,23 @@ class Example(QtGui.QMainWindow):
         textEdit = QtGui.QTextEdit()
         self.setCentralWidget(textEdit)
 
-        exitAction = QtGui.QAction(QtGui.QIcon('exit.png'), '&Exit', self)
-        exitAction.setShortcut('Ctrl+Q')
-        exitAction.setStatusTip('Exit application')
-        exitAction.triggered.connect(self.close)
+        openAction = QtGui.QAction(QtGui.QIcon('open.png'), '&Open', self)
+        openAction.setShortcut('Ctrl+O')
+        openAction.setStatusTip('Open file')
 
+        quitAction = QtGui.QAction(QtGui.QIcon('quit.png'), '&Quit', self)
+        quitAction.setShortcut('Ctrl+Q')
+        quitAction.setStatusTip('Quit application')
+        quitAction.triggered.connect(self.close)
 
         menubar = self.menuBar()
         fileMenu = menubar.addMenu('&File')
-        fileMenu.addAction(exitAction)
+	fileMenu.addAction(openAction)
+        fileMenu.addAction(quitAction)
 
-        toolbar = self.addToolBar('&Exit')
-        toolbar.addAction(exitAction)
+        toolbar = self.addToolBar('&tool')
+	toolbar.addAction(openAction)
+        toolbar.addAction(quitAction)
 
         self.statusBar()
         
