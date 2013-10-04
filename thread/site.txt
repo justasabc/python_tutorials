@@ -1,0 +1,529 @@
+What are threads and why are they useful?
+
+You can skip this section if you already know what threads are and just want to see how to use them in Python.
+
+When you run a normal Python program, the program execution starts at the first line and goes down line by line. Loops and function calls may cause the program execution to jump around, but it is fairly easy to see from the code which line will get executed next at any given point. You can put your finger on the first line of code in the .py file on the screen, and then trace through the next lines of code that are executed. This is single-threaded programming.
+
+However, using multiple threads is like putting a second finger down on your code. Each finger still moves the same way, but now they are executing code simultaneously.
+
+Actually, they aren’t executing simultaneously. Your two fingers are taking turns at which one executes code. Computers with multicore CPUs can actually run multiple instructions simultaneously, but there is a feature of Python programs called the GIL (Global Interpreter Lock) that limits a Python program to one core only.
+
+The Python interpreter will run one thread for a while, and then pause it to run another thread for a while. But it does this so fast that it seems like they are running simultaneously.
+
+You can start dozens or hundreds of threads in your program (that’s a lot of fingers). This doesn’t automatically make your programs dozens or hundreds of times faster though (all the threads are still sharing the same CPU) but it can make your program more efficient.
+
+For example, say you write a function that will download a file full of names, then sorts the names, and then writes these names to a file on your computer. If there are hundreds of files your program needs to process, you would put a call to this function in a loop and it would handle each file serially: download, sort, write, download, sort, write, download, sort, write…
+
+Each of these three steps use different resources on your computer: downloading uses the network connection, sorting uses the CPU, writing the file uses the hard drive. Also, there are tiny pauses within each of these steps. For example, the server you are downloading the file from may be slow and your computer’s Internet connection has bandwidth to spare.
+
+It would be better if you could call this function hundreds of times in parallel by using one thread for each file. Not only would this make better use of your bandwidth, but if some files download sooner than others, the CPU can be used to sort them while the network connection continues to work. This makes more efficient use of your computer.
+
+Of course, in the above case, each thread is doing its own separate thing and doesn’t need to communicate or synchronize anything with the other threads. You could just write the simple single-threaded version of the download-sort-write program and run the program hundreds of times separately. (Though it might be a pain to type & click each time to run the program each with a different file to download.)
+
+Many multithreaded programs share access to the same variables, but this is where things can get tricky.
+
+
+
+Photo from Brad Montgomery)
+
+Here’s a common metaphor that is used: Say you have two robot ticket sellers. Their tasks are simple:
+
+Ask the customer which seat they want.
+Check a list to see if the seat is available.
+Get the ticket for that seat.
+Cross that seat off the list.
+A customer asks Robot A for seat 42. Robot A checks that the seat is available from the list and finds that it is, so it grabs the ticket. But before Robot A can cross the seat off the list, Robot B is asked by a different customer for seat 42. Robot B checks the list and sees that the seat is still available, so it tries to grab the ticket for the seat. But Robot B can’t find the ticket for seat 42. THIS DOES NOT COMPUTE, and Robot B’s electronic brain explodes. Robot A then crosses seat 42 off of the list.
+
+The above problem happens because although the two robots (or rather, two threads) are executing independently, they are both reading and modifying a shared list (or rather, a variable). Your programs can get very hard-to-fix bugs which are also difficult to even reproduce, since Python’s thread execution switching is nondeterministic, that is, done differently each time the program is run. We aren’t used to having the data in variables “magically” change from one line to the next just because a different thread was executed in between them.
+
+When the execution switches from one thread to another, this is known as a context switch.
+
+There is also the problem of deadlocks, which is commonly explained using the metaphor of the Dining Philosophers. Five philosophers are sitting around a circular table eating spaghetti but require two forks to do so. There is one fork between each philosopher (for a total of five forks). The method the philosophers use to eat is this:
+
+Philosophize for a while.
+Pick up the fork on your left.
+Wait until the fork on your right is available.
+Pick up the fork on your right.
+Eat.
+Put the forks down.
+Go back to step 1.
+
+
+Aside from the fact that they’ll be sharing forks with their neighbors (eww), it seems like this method will work. But sooner or later everyone at the table will end up with the fork on their left in their hand and waiting for the fork on their right. But because everyone is holding on to the fork their neighbor is waiting for and won’t put it down until they’ve eaten, the philosophers are in a deadlock state. They will be holding forks in their left hand but never getting a fork in their right hand, so they never eat and never put down the fork in their left hand. The philosophers all starve to death (except for Voltaire who is actually a robot. Without spaghetti, his electronic brain explodes.)
+
+There is also a similar situation called a livelock. This is when no work gets done because the threads are too generous at making a resource available. The best metaphor of this is when two people are walking towards each other down a hall. They step to the side to let the other person walk past, but end up blocking each other. So they both step back to the other side, but end up blocking each other again. They continue doing this until they starve/electronic-brain-explode.
+
+There are a few other problems that can come up with multithreaded programming such as starvation (no seriously, that’s what it is called) and generally fall under the label of “Concurrency” in computer science. But we will only treat a simplified case.
+
+Locks
+
+One way to prevent bugs with multithreaded programming is by using locks. Before a thread reads or modifies a shared variable, it attempts to “acquire” a lock. If it can acquire the lock, the thread goes on to read or modify the variable. If the thread cannot acquire the lock, it waits until the lock becomes available.
+
+When the thread is done with the shared variable, it will “release” the lock so that some other thread waiting for the lock can acquire it.
+
+Going back to our robot ticket seller metaphor, this is like having a robot pick up the list (the list is a “lock”), and then reading it the ticket is available, grabbing the ticket, and then crossing out the seat on the list. When the robot puts the list back down, it is “releasing the lock”. If another robot needs to pick up the list but it is not there, it will wait until the list is available.
+
+You can cause bugs by writing code that forgets to release a lock. This will cause a deadlock situation since the other threads will hang and do nothing while waiting for a lock to bereleased.
+
+Threads in Python
+
+Okay, let’s write a Python program that demonstrates how to use threads and locks. This program is based off of my “Snake” clone in Chapter 6 of my Making Games with Python & Pygame book. Except instead of a worm running around eating apples, we’ll just have the worm running around the screen. And instead of just one worm, we will have multiple worms. Each worm will be controlled by a separate thread. The shared variable will have the data structure that represents which places on the screen (called “cells” in this program) are occupied by a worm. A worm cannot move forward to occupy a cell if another worm is already there. We will use locks to ensure that the worms don’t occupy the same cell as another worm.
+
+The code for this tutorial can be downloaded here: threadworms.py or from GitHub. This code works with Python 3 or Python 2, and you need Pygame installed as well in order to run it.
+
+Here’s a summary of the thread-related code in our threadworms.py program:
+
+import threading
+Python’s thread library is in a module named threading, so first import this module.
+
+GRID_LOCK = threading.Lock()
+The class Lock in the threading module has acquire() and release() methods. We will create a new Lock object and store it in a global variable named GRID_LOCK. (Since the state of the grid-like screen and which cells are occupied is stored in a global variable named GRID. The pun was unintended.)
+
+# A global variable that the Worm threads check to see if they should exit.
+
+WORMS_RUNNING = True
+Our WORMS_RUNNING global variable is regularly checked by the worm threads to see if they should quit. Calling sys.exit() will not stop the program because it only quits the thread that made the call. As long as there are other threads still running the program will continue. The main thread in our program (which handles the Pygame drawing and event handling) will set WORMS_RUNNING to False before it calls pygame.quit() and sys.exit(). The next time a thread checks WORMS_RUNNING, it will quit, until eventually the last thread quits and then the program terminates.
+
+class Worm(threading.Thread):
+    def __ init__(self, name='Worm', maxsize=None, color=None, speed=None):
+        threading.Thread.__init__(self)
+        self.name = name
+The thread’s code must start from a class that is a child of the Thread class (which is in the threading module). Our Thread subclass will be named Worm since it controls You don’t need an __init__() function, but since our Worm classes uses one we need to call the threading.Thread class’s __init__() method first. Also optional is to override the name member. Our __init__() function uses the string 'Worm' by default, but we can supply each thread with a unique name. Python will display the thread’s name in the error message if it crashes.
+
+GRID_LOCK.acquire()
+# ...some code that reads or modifies GRID...
+GRID_LOCK.release()
+Before we read or modify the value in the GRID variable, the thread’s code should attempt to acquire the lock. If the lock isn’t available, the method call to acquire() will not return and instead “block” until the lock becomes available. The thread is paused while this happens. This way, we know that the code after the acquire() call will only happen if the thread has acquired the lock.
+
+Acquiring and releasing a lock around a bit of code ensures that another thread does not execute this code while the current thread is. This makes the code atomic because the code is always executed as a single unit.
+
+After the thread’s code is done with the GRID variable, the lock can be released by calling the release() method.
+
+def run(self):
+	# thread code goes here.
+A thread starts when the Worm class (which is a subclass of threading.Thread) has its start() method called. We don’t have to implement start() in the Worm class because it is inherited from the threading.Thread class. When the start() method is called, a new thread is created and the code inside the run() method is executed in this new thread. Do not call the run() method directly, as this won’t create the new thread.
+
+This is important to know: to start the thread call the start() method, but the code that gets run in the new thread is in run(). We don’t have to define start() because it is inherited from threading.Thread. We do need to define run() since that is where our thread’s code will go.
+
+When the run() method returns (or sys.exit() is called in the thread), the thread will be destroyed. All threads in a program must be destroyed before the program terminates. The program will still be running as long as there is one running thread.
+
+So when start() is called, this is when you would place your second finger on the source code in run() to start tracing the code. Your first finger will continue tracing the code after the line that has the start() call.
+
+A Simple Multithreaded Example
+
+Before we go into the Threadworm code, let’s just look at a dead simple multithreaded program:
+
+import threading
+
+TOTAL = 0
+
+class CountThread(threading.Thread):
+    def run(self):
+        global TOTAL
+        for i in range(100):
+            TOTAL = TOTAL + 1
+        print('%s\n' % (TOTAL))
+
+a = CountThread()
+b = CountThread()
+a.start()
+b.start()
+This program defines a new class called CountThread. When a CountThread object’s start() method is called, a new thread is created which will loop 100 times and increment the TOTAL global variable (which is shared between the variables) by 1 on each iteration of the loop.
+
+Since we are creating two CountThread objects, whichever one finishes last should display 200. Each thread increases TOTAL by 100 and there are two threads. When we run this program, that’s what we see:
+
+100
+200
+Because the first number is 100, we can tell that probably what happened is that one thread ran through the entire loop before a context switch happened.
+
+However, if we change range(100) to range(100000), we would expect the second number to be 200000, since each thread increases TOTAL by 100000 and there are two threads. But when we run the program, something like this appears (your numbers may be slightly different):
+
+143294
+149129
+That second number is not 200000! It’s quite less than that actually. The reason this happened is because we did not use locks around the code the reads and modifies the TOTAL variable, which is shared among multiple threads.
+
+Look at this line:
+
+TOTAL = TOTAL + 1
+If TOTAL was set to 99, then you would expect TOTAL + 1 to evaluate to 99 + 1 and then to 100, and then 100 is stored as the new value in TOTAL. Then on the next iteration, TOTAL + 1 would be 100 + 1 or 101, which is stored as the new value in TOTAL.
+
+But say when TOTAL + 1 gets evaluated as 99 + 1, the execution switches to the other thread, which is also about to execute the TOTAL = TOTAL + 1 line. The value in TOTAL is still 99, so TOTAL + 1 in this second thread gets evaluated to 99 + 1.
+
+Then, another context switch happens back to the first thread where TOTAL = 99 + 1 is in the middle of being executed. The integer 100 is assigned to TOTAL. Now execution switches back to the second thread again.
+
+In this second thread, TOTAL = 99 + 1 is about to be executed. Even though TOTAL is now 100, the TOTAL + 1 in this second thread has already been evaluated as 99 + 1. So the second thread also ends up assigning the integer 100 to TOTAL. Even though this TOTAL = TOTAL + 1 has been executed twice (once by each thread), the value in TOTAL has really only been incremented by 1!
+
+The problem is, the line of code TOTAL = TOTAL + 1 is not atomic. The context switch can happen right in the middle of the line being executed. We need to use locks around this code to make this an atomic operation.
+
+This new code fixes this problem:
+
+import threading
+
+TOTAL = 0
+MY_LOCK = threading.Lock()
+
+class CountThread(threading.Thread):
+    def run(self):
+        global TOTAL
+        for i in range(100000):
+            MY_LOCK.acquire()
+            TOTAL = TOTAL + 1
+            MY_LOCK.release()
+        print('%s\n' % (TOTAL))
+
+a = CountThread()
+b = CountThread()
+a.start()
+b.start()
+When we run this code, this is what is outputted (your first number might be a little different):
+
+199083
+200000
+That the second number is 200000 tells us that the TOTAL = TOTAL + 1 line was correctly executed each of the 200,000 times it was run.
+
+Explaining the Threadworms Program
+
+I’m going to use the threadworms_nocomments.py version of the program since it doesn’t have the very verbose comments in it. The line numbers have been included at the front of each line (they are not a part of the actual Python source code). I skip a lot of the commented sections because they are self-explanatory. You don’t really need to know Pygame to follow this code. Pygame is only responsible for creating the window and drawing the lines and rectangles on it.
+
+One thing to know is that Pygame uses a tuple of three integers to represent colors. The integers each span from 0 to 255 and represent the RGB (Red-Green-Blue) value of the color. So (0, 0, 0) is black and (255, 255, 255) is white and (255, 0, 0) is red and (255, 0, 255) is purple, etc.
+
+  9. import random, pygame, sys, threading
+ 10. from pygame.locals import *
+ 11.
+ 12. # Setting up constants
+ 13. NUM_WORMS = 24  # the number of worms in the grid
+ 14. FPS = 30        # frames per second that the program runs
+ 15. CELL_SIZE = 20  # how many pixels wide and high each "cell" in the grid is
+ 16. CELLS_WIDE = 32 # how many cells wide the grid is
+ 17. CELLS_HIGH = 24 # how many cells high the grid is
+The top part of the code imports some modules our program needs and defines some constant values. Feel free to edit these constant values. Increasing or decreasing the FPS value doesn’t change how fast the worms run around, it just changes how often the screen updates. If you set this value very low, it looks like the worms are teleporting since they move multiple spaces in between screen updates.
+
+CELL_SIZE is how big each square on the screen’s grid is (in pixels). If you want to change the number of cells, modify the CELLS_WIDE and CELLS_HIGH constants.
+
+ 20. GRID = []
+ 21. for x in range(CELLS_WIDE):
+ 22.     GRID.append([None] * CELLS_HIGH)
+The GRID global variable will contain data that tracks the state of the grid. It is a simple list of lists so that GRID[x][y] will refer to the cell at the X and Y coordinate. (In programming, the (0, 0) origin is at the top-left corner of the screen. X increases going to the right (just like in mathematics classes) but Y increases going down.)
+
+If GRID[x][y] is set to None, then that cell is unoccupied. Otherwise, GRID[x][y] will be set to an RGB triplet. (This information is used when drawing the grid to the screen.)
+
+ 24. GRID_LOCK = threading.Lock() # pun was not intended
+Line 24 creates a Lock object which our threads’ code will acquire and release before reading or modifying GRID.
+
+ 26. # Constants for some colors.
+ 27. #             R    G    B
+ 28. WHITE     = (255, 255, 255)
+ 29. BLACK     = (  0,   0,   0)
+ 30. DARKGRAY  = ( 40,  40,  40)
+ 31. BGCOLOR = BLACK             # color to use for the background of the grid
+ 32. GRID_LINES_COLOR = DARKGRAY # color to use for the lines of the grid
+RGB tuples are kind of hard to read, so I usually set up some constants for them.
+ 33.
+ 34. # Calculate total pixels wide and high that the full window is
+ 35. WINDOWWIDTH = CELL_SIZE * CELLS_WIDE
+ 36. WINDOWHEIGHT = CELL_SIZE * CELLS_HIGH
+ 37.
+ 38. UP = 'up'
+ 39. DOWN = 'down'
+ 40. LEFT = 'left'
+ 41. RIGHT = 'right'
+Some more simple constants. I use constants like DOWN and RIGHT instead of strings like 'down' and 'right' because if I make a typo using constants (i.e. DWON) then Python will immediately crash with a NameError exception. This is much better than if I make a typo like 'dwon' which won’t immediately crash the program will cause bugs later on, making it more difficult to track down.
+
+ 43. HEAD = 0
+ 44. BUTT = -1 # negative indexes count from the end, so -1 will always be the last index
+Each worm will be represent by a list of dictionaries like {'x': 42, 'y': 7}. Each of these dictionaries represents a single body segment of the worm. The dictionary at the front of the list (at index 0) is the head and the dictionary at the end of the list (at index -1, using Python’s nice negative indexing which begins counting from the end) is the butt of the worm.
+
+(In computer science, “head” often refers to the first item in a queue or list, and “tail” refers to every item after the head. So I use “butt” to refer to just the last item. Also, I am silly.)
+
+
+
+The above worm would be represented with a list that looks like this: [{'x': 7, 'y': 2}, {'x': 7, 'y': 3}, {'x': 7, 'y': 4}, {'x': 8, 'y': 4}, {'x': 9, 'y': 4}, {'x': 10, 'y': 4}, {'x': 11, 'y': 4}, {'x': 11, 'y': 3}, {'x': 11, 'y': 2}]
+
+ 46. # A global variable that the Worm threads check to see if they should exit.
+ 47. WORMS_RUNNING = True
+As long as one thread is running, the program will continue to execute. The main thread that does the screen drawing will also detect when the user has clicked the close button on the window or pressed the Esc key, so it needs a way to tell the worm threads to quit. We will code the worm threads to constantly check WORMS_RUNNING. If WORMS_RUNNING is set to False, then the thread will terminate itself.
+
+ 49. class Worm(threading.Thread): # "Thread" is a class in the "threading" module.
+ 50.     def __init__(self, name='Worm', maxsize=None, color=None, speed=None):
+Here’s our Worm class. It is a child class of the threading.Thread class. Each worm can have a name (which appears if the thread crashes, helping us identify which thread crashed), and a size, color, and speed. Default values are provided, but we can specify these ourselves if we want.
+
+ 56.         threading.Thread.__init__(self) # since we are overriding the Thread class, we need to first call its __init__() method.
+Since we are overriding the __init__() method, we need to call the parent classes __init__() method so that it can initialize all the thread stuff. (We don’t need to know how it works, just remember to call it.)
+
+ 57.
+ 58.         self.name = name
+ 59. 
+ 60.         # Set the maxsize to the parameter, or to a random maxsize.
+ 61.         if maxsize is None:
+ 62.             self.maxsize = random.randint(4, 10)
+ 63. 
+ 64.             # Have a small chance of a super long worm.
+ 65.             if random.randint(0,4) == 0:
+ 66.                 self.maxsize += random.randint(10, 20)
+ 67.         else:
+ 68.             self.maxsize = maxsize
+ 69. 
+ 70.         # Set the color to the parameter, or to a random color.
+ 71.         if color is None:
+ 72.             self.color = (random.randint(60, 255), random.randint(60, 255), random.randint(60, 255))
+ 73.         else:
+ 74.             self.color = color
+ 75. 
+ 76.         # Set the speed to the parameter, or to a random number.
+ 77.         if speed is None:
+ 78.             self.speed = random.randint(20, 500) # wait time before movements will be between 0.02 and 0.5 seconds
+ 79.         else:
+ 80.             self.speed = speed
+The above code sets up a worm with random values for the size, color, and speed unless specific values were specified for the parameters.
+
+ 82.         GRID_LOCK.acquire() # block until this thread can acquire the lock
+ 83. 
+ 84.         while True:
+ 85.             startx = random.randint(0, CELLS_WIDE - 1)
+ 86.             starty = random.randint(0, CELLS_HIGH - 1)
+ 87.             if GRID[startx][starty] is None:
+ 88.                 break # we've found an unoccupied cell in the grid
+ 89. 
+ 90.         GRID[startx][starty] = self.color # modify the shared data structure
+ 91. 
+ 92.         GRID_LOCK.release()
+We need to determine a random starting location for the worm. To make this easier, all worms begin with a length of one body segment and grow until they reach their full maximum size. But we need to make sure that the random location on the grid we come up with isn’t already occupied. This involves reading and modifying the GRID global variable, so we need to acquire and release the GRID_LOCK lock before doing this.
+
+(As a side note, you might be wondering why we don’t have a “global GRID” line at the beginning of this method. GRID is a global variable and we are modifying it in this method, and without a global statement Python should consider this a local variable that just happens to have the same name as the GRID global variable. But if you look closer, we only change values inside the GRID list of lists, but never the value in GRID itself. That is, we have code that looks like “GRID[startx][starty] = self.color” but never “GRID = someValue“. Because we don’t actually modify GRID itself, Python considers the use of the variable name GRID in this method to refer to the global variable GRID.)
+
+We keep looping until we’ve found an unoccupied cell, and then mark that cell as now occupied. After this, we are done reading and modifying GRID so we release the GRID_LOCK lock.
+
+(Another side note, if there are no free cells on the grid, this loop will continue to loop forever and the thread will “hang”. Since the other threads will continue to run, you might not notice this problem. The new worm will not be created but the rest of the program continues to run normally. However, when you try to quit, since the hanging thread never gets to check WORMS_RUNNING to know it should quit and the program will refuse to terminate. You will have to force the program to shut down through your operating system. Just be sure not to add more worms than you have space for.)
+
+ 96.         self.body = [{'x': startx, 'y': starty}]
+ 97.         self.direction = random.choice((UP, DOWN, LEFT, RIGHT))
+The starting body segment is added to the body member variable. The body member variable will be a list of all the locations of segments of the body. The direction that the worm is heading in is stored in the direction member variable.
+
+Technically, since this worm right now only has one body segment that is both the first and last item in the list, the worm’s head is the same as its butt.
+
+100.     def run(self):
+101.         while True:
+102.             if not WORMS_RUNNING:
+103.                 return # A thread terminates when run() returns.
+The run() method is the method that is called when the worm’s start() method is called. The code in run() is executed in a brand new thread. We will have an infinite loop that causes the worm to continuously move around the grid. The first thing we do on each iteration of the loop is check if WORMS_RUNNING is set to False, and if so, we should return from this method.
+
+The thread will terminate itself if we either call sys.exit() from the thread or when the run() method returns.
+
+105.             # Randomly decide to change direction
+106.             if random.randint(0, 100) < 20: # 20% to change direction
+107.                 self.direction = random.choice((UP, DOWN, LEFT, RIGHT))
+On each move, there’s a 20% chance that the worm randomly changes direction. (Although the new direction could be the same as the current direction. But I wanted to write this code out quickly.)
+
+109.             GRID_LOCK.acquire() # don't return (that is, block) until this thread can acquire the lock
+110. 
+111.             nextx, nexty = self.getNextPosition()
+112.             if nextx in (-1, CELLS_WIDE) or nexty in (-1, CELLS_HIGH) or GRID[nextx][nexty] is not None:
+113.                 # The space the worm is heading towards is taken, so find a new direction.
+114.                 self.direction = self.getNewDirection()
+115. 
+116.                 if self.direction is None:
+117.                     # No places to move, so try reversing our worm.
+118.                     self.body.reverse() # Now the head is the butt and the butt is the head. Magic!
+119.                     self.direction = self.getNewDirection()
+120. 
+121.                 if self.direction is not None:
+122.                     # It is possible to move in some direction, so reask for the next postion.
+123.                     nextx, nexty = self.getNextPosition()
+124. 
+125.             if self.direction is not None:
+126.                 # Space on the grid is free, so move there.
+127.                 GRID[nextx][nexty] = self.color # update the GRID state
+128.                 self.body.insert(0, {'x': nextx, 'y': nexty}) # update this worm's own state
+129. 
+130.                 # Check if we've grown too long, and cut off tail if we have.
+131.                 # This gives the illusion of the worm moving.
+132.                 if len(self.body) > self.maxsize:
+133.                     GRID[self.body[BUTT]['x']][self.body[BUTT]['y']] = None # update the GRID state
+134.                     del self.body[BUTT] # update this worm's own state (heh heh, worm butt)
+135.             else:
+136.                 self.direction = random.choice((UP, DOWN, LEFT, RIGHT)) # can't move, so just do nothing for now but set a new random direction
+137. 
+138.             GRID_LOCK.release()
+The above code handles moving the worm one space. Since this involves reading and modifying GRID, we need to acquire the GRID_LOCK lock first. Essentially, the worm will try to move one space in the direction that it’s direction member variable says. If this cell is beyond the border of the grid or is already occupied, then the worm will change its direction. If the worm is blocked on all sides, then the worm reverses itself so that the butt becomes the head and the head becomes the butt. If the worm still can’t move in any direction, then it will just stay put for now.
+
+140.             pygame.time.wait(self.speed)
+After the worm has moved one space (or at least tried to), we will put the thread to sleep. Pygame has a function called wait() that does the same thing as time.sleep(), except that the argument to wait() is in integer of milliseconds instead of seconds.
+
+Pygame’s pygame.time.wait() and the Python Standard Library’s time.time() functions (and Pygame’s tick() method) are smart enough to tell the operating system to put the thread to sleep for a while and just run other threads instead. Of course, while the OS could interrupt our thread at any time to hand execution off to a different thread, calling wait() or sleep() is a way we can explicitly say, “Go ahead and don’t run this thread for X milliseconds.”
+
+This wouldn’t happen if we have “wait” code like this:
+
+startOfWait = time.time()
+while time.time() - 5 > startOfWait:
+    pass # do nothing for 5 seconds
+The above code also implements “waiting”, but to the OS it looks like your thread is still executing code (even though this code is doing nothing but looping until 5 seconds has passed). This is inefficient, because time spent executing the above pointless loop is time that could have been spent executing other thread’s code.
+
+Of course, if ALL worms’ threads are sleeping, then the computer can know it can use the CPU to run other programs besides our Python Threadworms script.
+
+143.     def getNextPosition(self):
+144.         # Figure out the x and y of where the worm's head would be next, based
+145.         # on the current position of its "head" and direction member.
+146. 
+147.         if self.direction == UP:
+148.             nextx = self.body[HEAD]['x']
+149.             nexty = self.body[HEAD]['y'] - 1
+150.         elif self.direction == DOWN:
+151.             nextx = self.body[HEAD]['x']
+152.             nexty = self.body[HEAD]['y'] + 1
+153.         elif self.direction == LEFT:
+154.             nextx = self.body[HEAD]['x'] - 1
+155.             nexty = self.body[HEAD]['y']
+156.         elif self.direction == RIGHT:
+157.             nextx = self.body[HEAD]['x'] + 1
+158.             nexty = self.body[HEAD]['y']
+159.         else:
+160.             assert False, 'Bad value for self.direction: %s' % self.direction
+161. 
+162.         return nextx, nexty
+The getNextPosition() figures out where the worm will go next given the position of its head and the direction it is going.
+
+165.     def getNewDirection(self):
+166.         x = self.body[HEAD]['x'] # syntactic sugar, makes the code below more readable
+167.         y = self.body[HEAD]['y']
+168. 
+169.         # Compile a list of possible directions the worm can move.
+170.         newDirection = []
+171.         if y - 1 not in (-1, CELLS_HIGH) and GRID[x][y - 1] is None:
+172.             newDirection.append(UP)
+173.         if y + 1 not in (-1, CELLS_HIGH) and GRID[x][y + 1] is None:
+174.             newDirection.append(DOWN)
+175.         if x - 1 not in (-1, CELLS_WIDE) and GRID[x - 1][y] is None:
+176.             newDirection.append(LEFT)
+177.         if x + 1 not in (-1, CELLS_WIDE) and GRID[x + 1][y] is None:
+178.             newDirection.append(RIGHT)
+179. 
+180.         if newDirection == []:
+181.             return None # None is returned when there are no possible ways for the worm to move.
+182. 
+183.         return random.choice(newDirection)
+The getNewDirection() method returns a direction (one of the UP, DOWN, LEFT, or RIGHT strings) that is for an unoccupied cell within the grid. If there are no available cells the head could move towards, the method returns None.
+
+185. def main():
+186.     global FPSCLOCK, DISPLAYSURF
+187. 
+188.     # Draw some walls on the grid
+189.     squares = """
+190. ...........................
+191. ...........................
+192. ...........................
+193. .H..H..EEE..L....L.....OO..
+194. .H..H..E....L....L....O..O.
+195. .HHHH..EE...L....L....O..O.
+196. .H..H..E....L....L....O..O.
+197. .H..H..EEE..LLL..LLL...OO..
+198. ...........................
+199. .W.....W...OO...RRR..MM.MM.
+200. .W.....W..O..O..R.R..M.M.M.
+201. .W..W..W..O..O..RR...M.M.M.
+202. .W..W..W..O..O..R.R..M...M.
+203. ..WW.WW....OO...R.R..M...M.
+204. ...........................
+205. ...........................
+206. """
+207.     #setGridSquares(squares)
+The setGridSquares() function can be used to draw static blocks on the grid by passing a multiline string. The period characters represent no change, a space character means “set this to be unoccupied” and any other character will represent a static block to place on the grid. You can uncomment line 207 if you want to see the “Hello worm” text written out in blocks.
+
+209.     # Pygame window set up.
+210.     pygame.init()
+211.     FPSCLOCK = pygame.time.Clock()
+212.     DISPLAYSURF = pygame.display.set_mode((WINDOWWIDTH, WINDOWHEIGHT))
+213.     pygame.display.set_caption('Threadworms')
+This is standard Pygame setup code to create a window for our program.
+
+215.     # Create the worm objects.
+216.     worms = [] # a list that contains all the worm objects
+217.     for i in range(NUM_WORMS):
+218.         worms.append(Worm())
+219.         worms[-1].start() # Start the worm code in its own thread.
+This code creates the Worm objects and then creates their threads by calling the start() method. The code in each worm’s run() method will begin executing in a separate thread at this point.
+
+221.     while True: # main game loop
+222.         handleEvents()
+223.         drawGrid()
+224. 
+225.         pygame.display.update()
+226.         FPSCLOCK.tick(FPS)
+The main game loop is pretty simple. The handleEvents() function will be checking if the user is terminating the program and the drawGrid() function will draw the grid lines and cells to the screen. The pygame.display.update() function tells the window to update the screen, after which the tick() method will pause for however long is needed to achieve the framerate specified in FPS.
+
+229. def handleEvents():
+230.     # The only event we need to handle in this program is when it terminates.
+231.     global WORMS_RUNNING
+232. 
+233.     for event in pygame.event.get(): # event handling loop
+234.         if (event.type == QUIT) or (event.type == KEYDOWN and event.key == K_ESCAPE):
+235.             WORMS_RUNNING = False # Setting this to False tells the Worm threads to exit.
+236.             pygame.quit()
+237.             sys.exit()
+The Pygame events can tell us when the user has pressed the Esc key or clicked on the close button for the window. In this case we want to set WORMS_RUNNING to False so that the threads will terminate themselves and then the main thread shuts down Pygame and exits.
+
+240. def drawGrid():
+241.     # Draw the grid lines.
+242.     DISPLAYSURF.fill(BGCOLOR)
+243.     for x in range(0, WINDOWWIDTH, CELL_SIZE): # draw vertical lines
+244.         pygame.draw.line(DISPLAYSURF, GRID_LINES_COLOR, (x, 0), (x, WINDOWHEIGHT))
+245.     for y in range(0, WINDOWHEIGHT, CELL_SIZE): # draw horizontal lines
+246.         pygame.draw.line(DISPLAYSURF, GRID_LINES_COLOR, (0, y), (WINDOWWIDTH, y))
+This code draws the screen based on the values in GRID. But first it draws the grid lines.
+
+248.     # The main thread that stays in the main loop (which calls drawGrid) also
+249.     # needs to acquire the GRID_LOCK lock before modifying the GRID variable.
+250.     GRID_LOCK.acquire()
+251. 
+252.     for x in range(0, CELLS_WIDE):
+253.         for y in range(0, CELLS_HIGH):
+254.             if GRID[x][y] is None:
+255.                 continue # No body segment at this cell to draw, so skip it
+256. 
+257.             color = GRID[x][y] # modify the GRID data structure
+258. 
+259.             # Draw the body segment on the screen
+260.             darkerColor = (max(color[0] - 50, 0), max(color[1] - 50, 0), max(color[2] - 50, 0))
+261.             pygame.draw.rect(DISPLAYSURF, darkerColor, (x * CELL_SIZE,     y * CELL_SIZE,     CELL_SIZE,     CELL_SIZE    ))
+262.             pygame.draw.rect(DISPLAYSURF, color,       (x * CELL_SIZE + 4, y * CELL_SIZE + 4, CELL_SIZE - 8, CELL_SIZE - 8))
+263. 
+264.     GRID_LOCK.release() # We're done messing with GRID, so release the lock.
+Because this code reads the GRID variable, we will first acquire the GRID_LOCK lock. If a cell is occupied (that is, it is set to an RGB tuple value inside the GRID variable) the code draws in the cell.
+
+267. def setGridSquares(squares, color=(192, 192, 192)):
+268.     # squares is set to a value like:
+269.     # """
+270.     # ......
+271.     # ...XX.
+272.     # ...XX.
+273.     # ......
+274.     # """
+275. 
+276.     squares = squares.split('\n')
+277.     if squares[0] == '':
+278.         del squares[0]
+279.     if squares[-1] == '':
+280.         del squares[-1]
+281.
+282.     GRID_LOCK.acquire()
+283.     for y in range(min(len(squares), CELLS_HIGH)):
+284.         for x in range(min(len(squares[y]), CELLS_WIDE)):
+285.             if squares[y][x] == ' ':
+286.                 GRID[x][y] = None
+287.             elif squares[y][x] == '.':
+288.                 pass
+289.             else:
+290.                 GRID[x][y] = color
+291.     GRID_LOCK.release()
+The setGridSquares() can write static blocks to the grid and was explained previously.
+
+294. if __name__ == '__main__':
+295.     main()
+The above is a Python trick. Instead of putting the main code in the global scope, we put it into a function named main() which is called from the bottom. This guarantees that all the functions have been defined before the code in main() runs. The __name__ variable is only set to the string '__main__' if this program was run itself, as opposed to imported as a module by another program.
+
+Summary
+
+That’s it! Multithreaded programming is fairly simple to explain, but it can be tricky to understand how to get your own multithreaded programs to work correctly. The best way to learn is to practice by writing your own programs.
+
+Actually, the way we have our code set up, even if we got rid of the locks it would still run almost perfectly. Nothing would crash, although there would sometimes be the case where two worms are approaching the same cell and end up both occupying it. They would then seemingly move through each other. Using locks ensures that only one worm can occupy a cell at any time.
+
+Good luck!
