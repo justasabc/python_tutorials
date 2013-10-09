@@ -1,8 +1,10 @@
-# -*- coding:utf-8 -*-
+#/usr/bin/python
 # book fetcher   utf-8  gbk gb2312
 __author__ = "kezunlin"
+__version__ = "0.1"
 import re
 import requests
+from bs4 import BeautifulSoup
 import os
 import sys
 import time
