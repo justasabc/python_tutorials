@@ -1,0 +1,29 @@
+#-------------------------------------------------------
+# settings overrides
+# Applicable YAML files: all files with a .yml extension.
+# Tabs are NOT allowed, use spaces ONLY.
+# You MUST indent your properties and lists with 1 or more spaces.
+# All keys/properties are case-sensitive. ("ThIs", is not the same as "thiS") 
+# Boolean flags(true/false) do NOT need quotes.
+# Integer vlaues also do NOT need quotes.
+# Any other key or property values that are not boolean or integer,
+# MUST be inside sigle quotes
+#-------------------------------------------------------
+
+helloworld:
+ boolean-property: false
+ integer-property: 10
+ string-property: 'this is a string of text'
+
+listdemo:
+ - value
+ - test
+ - another value
+ - 'they can also contain explict strings'
+
+# A value indicating whether the app runs in debug mode.
+# type: boolean
+# default: true (set to false for production or in untrusted environments)
+debug: false
+
+
