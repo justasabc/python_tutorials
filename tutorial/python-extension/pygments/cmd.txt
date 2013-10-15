@@ -1,0 +1,11 @@
+pygmentize test.py
+pygmentize -f html -o test.html test.py
+# Note that it will only be a snippet of HTML, if you want a full HTML document, use the "full" option
+
+pygmentize -f html -O full -o test.html test.py
+pygmentize -f html -l python -o test.html test.py
+pygmentize -O full,style=emacs -o test.html test.py
+pygmentize -f html -O style=colorful,linenos=1 -l python test.py
+pygmentize -S default -f html > style.css
+
+# http://pygments.org/docs/quickstart/

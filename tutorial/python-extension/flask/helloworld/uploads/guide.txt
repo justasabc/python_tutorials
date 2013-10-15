@@ -1,0 +1,22 @@
+static
+templates
+
+Just create a folder called static in your package or next to your module and it will be available at /static on the application.
+
+
+Flask will look for templates in the templates folder. So if your application is a module, this folder is next to that module, if it’s a package it’s actually inside your package:
+
+Case 1: a module:
+
+/application.py
+/templates
+    /hello.html
+
+Case 2: a package:
+
+/application
+    /__init__.py
+    /templates
+        /hello.html
+
+

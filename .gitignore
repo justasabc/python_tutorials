@@ -1,3 +1,5 @@
+module
+
 *.py[cod]
 
 # C extensions

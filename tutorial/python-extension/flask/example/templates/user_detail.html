@@ -1,0 +1,19 @@
+{% extends "layout.html" %}
+{% block body %}
+	<h2>Messages from {{ user.username }}</h2>
+	{% if is_login %}
+  		{% if user.username != session['username'] %}
+    			{% if is_following %}
+				{% include "includes/unfollow.html" %}
+    			{% else %}
+				{% include "includes/follow.html" %}
+    			{% endif %}
+  		{% endif %}
+ 	{% endif %}
+  	<ul>
+    		{% for message in message_list %}
+      			<li>{% include "includes/message.html" %}</li>
+    		{% endfor %}
+  	</ul>
+  	{% include "includes/pagination.html" %}
+{% endblock %}

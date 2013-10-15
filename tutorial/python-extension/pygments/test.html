@@ -1,0 +1,22 @@
+<div class="highlight"><pre><span class="kn">from</span> <span class="nn">pygments</span> <span class="kn">import</span> <span class="n">highlight</span>
+<span class="kn">from</span> <span class="nn">pygments.lexers</span> <span class="kn">import</span> <span class="n">PythonLexer</span>
+<span class="kn">from</span> <span class="nn">pygments.lexers</span> <span class="kn">import</span> <span class="n">get_lexer_by_name</span><span class="p">,</span><span class="n">get_lexer_for_filename</span><span class="p">,</span><span class="n">get_lexer_for_mimetype</span>
+<span class="kn">from</span> <span class="nn">pygments.formatters</span> <span class="kn">import</span> <span class="n">HtmlFormatter</span>
+
+<span class="n">code</span> <span class="o">=</span> <span class="s">&#39;print &quot;hello world&quot;&#39;</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">highlight</span><span class="p">(</span><span class="n">code</span><span class="p">,</span><span class="n">PythonLexer</span><span class="p">(),</span><span class="n">HtmlFormatter</span><span class="p">())</span>
+<span class="k">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+<span class="c">#print(HtmlFormatter().get_style_defs(&#39;.highlight&#39;))</span>
+
+<span class="n">lexer</span> <span class="o">=</span> <span class="n">get_lexer_by_name</span><span class="p">(</span><span class="s">&#39;python&#39;</span><span class="p">,</span><span class="n">stripall</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="n">formatter</span> <span class="o">=</span> <span class="n">HtmlFormatter</span><span class="p">(</span><span class="n">linenos</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span><span class="n">cssclass</span><span class="o">=</span><span class="s">&#39;source&#39;</span><span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">highlight</span><span class="p">(</span><span class="n">code</span><span class="p">,</span><span class="n">lexer</span><span class="p">,</span><span class="n">formatter</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+
+<span class="n">lexer</span> <span class="o">=</span> <span class="n">get_lexer_by_name</span><span class="p">(</span><span class="s">&#39;python&#39;</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="n">lexer</span><span class="p">)</span>
+<span class="n">lexer</span> <span class="o">=</span> <span class="n">get_lexer_for_filename</span><span class="p">(</span><span class="s">&#39;test.py&#39;</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="n">lexer</span><span class="p">)</span>
+<span class="n">lexer</span> <span class="o">=</span> <span class="n">get_lexer_for_mimetype</span><span class="p">(</span><span class="s">&#39;text/x-perl&#39;</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="n">lexer</span><span class="p">)</span>
+</pre></div>

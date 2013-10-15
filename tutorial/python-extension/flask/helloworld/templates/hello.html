@@ -1,0 +1,15 @@
+<!doctype html>
+<!--
+There are two kinds of delimiters: {_%  and {_{ .
+The first one is used to execute statements such as for-loops or assign values, the latter prints the result of the expression to the template.
+
+Inside templates you also have access to the request, session and g [1] objects as well as the get_flashed_messages() function
+-->
+
+<title>Hello from Flask</title>
+{% if name %}
+<h1>Hello {{name}}</h1>
+{% else %}
+<h1>Hello world </h1>
+{% endif %}
+
